@@ -691,15 +691,18 @@ _AURORA_COLS = [(35,185,120),(40,200,140),(30,160,110),(70,215,165),(55,175,205)
 def _aurora_probability(lat):
     """
     Chance of aurora (Borealis north, Australis south) on a clear winter night.
-    Scales smoothly outward from the equator — zero in the tropics, peaks near 70°.
+    Scales outward from the equator — same curve in both hemispheres via abs(lat).
+    The 1% equatorial floor is an intentional easter egg for tropical users.
     """
     if lat is None:
         return 0.30
-    alat = abs(lat)          # symmetric: same curve in both hemispheres
-    if alat < 25:
-        return 0.0           # tropics — aurora never reaches here
-    t = min(1.0, (alat - 25) / 45.0)   # 0 at 25°, 1 at 70°+
-    return round(0.85 * (t ** 1.5), 3)
+    alat = abs(lat)
+    if   alat >= 70: return 0.90   # Arctic / Antarctic circle
+    elif alat >= 65: return 0.75   # Tromsø, Tierra del Fuego
+    elif alat >= 55: return 0.50   # Scotland, southern Canada, southern NZ
+    elif alat >= 45: return 0.25   # central Europe, northern US
+    elif alat >= 35: return 0.125  # rare — Mediterranean, Japan, Oregon
+    else:            return 0.01   # equatorial easter egg
 
 def draw_aurora(draw, p, season, weather, period, frame, show=True):
     if not show or season != 'winter' or period not in ('night', 'evening') or weather['clouds'] > 0:

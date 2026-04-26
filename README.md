@@ -126,6 +126,11 @@ then upscales to your monitor resolution. All scene elements use deterministic
 RNG seeded by `layout_seed` for the city structure — the same config always
 produces the same city.
 
+**Device load:** the GIF render takes ~10 seconds on one CPU core when conditions
+change, then the process exits. Playback is handled entirely by the wallpaper
+setter in composited GPU memory — no CPU cost at runtime. Between regenerations
+(typically 30 minutes to several hours) the daemon does nothing but sleep.
+
 ## Hyprlock integration
 
 The daemon writes `/tmp/dynamic_city_lock.png` (a static frame) whenever it
