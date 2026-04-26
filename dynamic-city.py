@@ -696,13 +696,13 @@ def _aurora_probability(lat):
     """
     if lat is None:
         return 0.30
-    alat = abs(lat)
-    if   alat >= 70: return 0.90   # Arctic / Antarctic circle
-    elif alat >= 65: return 0.75   # Tromsø, Tierra del Fuego
-    elif alat >= 55: return 0.50   # Scotland, southern Canada, southern NZ
-    elif alat >= 45: return 0.25   # central Europe, northern US
-    elif alat >= 35: return 0.125  # rare — Mediterranean, Japan, Oregon
-    else:            return 0.01   # equatorial easter egg
+    alat = abs(lat)   # |lat|: -65° (Tierra del Fuego) == +65° (Tromsø)
+    if   alat >= 70: return 0.90   # |lat| ≥ 70° — Arctic / Antarctic circle
+    elif alat >= 65: return 0.75   # |lat| ≥ 65° — Tromsø, Tierra del Fuego
+    elif alat >= 55: return 0.50   # |lat| ≥ 55° — Scotland, southern Canada, southern NZ
+    elif alat >= 45: return 0.25   # |lat| ≥ 45° — central Europe, northern US
+    elif alat >= 35: return 0.125  # |lat| ≥ 35° — Mediterranean, Japan, Oregon
+    else:            return 0.01   # |lat| < 35° — equatorial easter egg
 
 def draw_aurora(draw, p, season, weather, period, frame, show=True):
     if not show or season != 'winter' or period not in ('night', 'evening') or weather['clouds'] > 0:
