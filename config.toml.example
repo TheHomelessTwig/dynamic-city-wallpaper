@@ -1,0 +1,35 @@
+# dynamic-city configuration
+# Copy this file to ~/.config/dynamic-city/config.toml and edit as needed.
+# Run `python3 dynamic-city.py --init` to generate this interactively.
+
+[display]
+# Output resolution of your monitor (WxH). The pixel art canvas is always
+# rendered at 320×180 and upscaled — change this if your monitor isn't 1440p.
+resolution = "2560x1440"
+
+[location]
+# Leave blank to auto-detect via IP geolocation (requires internet).
+# Uncomment and fill in to hard-code your coordinates.
+# lat = YOUR_LAT
+# lon = YOUR_LON
+
+[city]
+# Integer seed that determines the city/tree layout. Change it for a different
+# skyline — same seed always produces the same city. Use --init to preview.
+layout_seed = 42
+
+# How densely trees are packed along the street (1 = sparse, 10 = dense forest).
+tree_density = 6
+
+# How tightly buildings fill the skyline (1 = scattered, 10 = packed skyline).
+building_density = 6
+
+[wallpaper]
+# Animated GIF setter. Only awww and swww support animated wallpapers on Wayland.
+# Supported: awww | swww
+setter = "awww"
+
+# Transition effect when the wallpaper changes.
+# awww:  wipe | fade | grow | outer | random
+# swww:  simple | fade | wipe | grow | outer | any
+transition = "wipe"
