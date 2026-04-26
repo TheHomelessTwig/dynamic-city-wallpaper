@@ -10,15 +10,15 @@ season (summer/autumn/winter/spring), moon phase, and local holidays.
 
 | Night — clear | Night — storm |
 |:---:|:---:|
-| ![Night clear](screenshots/night_clear.png) | ![Night storm](screenshots/night_storm.png) |
+| ![Night clear](screenshots/night_clear.gif) | ![Night storm](screenshots/night_storm.gif) |
 
 | Dawn — rain | Day — clear | Dusk |
 |:---:|:---:|:---:|
-| ![Dawn rain](screenshots/dawn_rain.png) | ![Day clear](screenshots/day_clear.png) | ![Dusk](screenshots/dusk.png) |
+| ![Dawn rain](screenshots/dawn_rain.gif) | ![Day clear](screenshots/day_clear.gif) | ![Dusk](screenshots/dusk.gif) |
 
 | Evening — winter aurora | |
 |:---:|:---:|
-| ![Evening aurora](screenshots/evening_aurora.png) | *aurora appears on clear winter nights* |
+| ![Evening aurora](screenshots/evening_aurora.gif) | *aurora appears on clear winter nights* |
 
 ---
 
