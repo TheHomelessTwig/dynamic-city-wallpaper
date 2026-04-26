@@ -1,17 +1,33 @@
-# dynamic-city
+# dynamic-city-wallpaper
 
 An animated pixel-art wallpaper for Wayland desktops. The scene reacts to live
 weather (rain, snow, lightning, wind angle), time of day (dawn/day/dusk/evening/night),
 season (summer/autumn/winter/spring), moon phase, and local holidays.
 
-![night scene example](assets/night.gif)
+---
+
+## Previews
+
+| Night — clear | Night — storm |
+|:---:|:---:|
+| ![Night clear](screenshots/night_clear.png) | ![Night storm](screenshots/night_storm.png) |
+
+| Dawn — rain | Day — clear | Dusk |
+|:---:|:---:|:---:|
+| ![Dawn rain](screenshots/dawn_rain.png) | ![Day clear](screenshots/day_clear.png) | ![Dusk](screenshots/dusk.png) |
+
+| Evening — winter aurora | |
+|:---:|:---:|
+| ![Evening aurora](screenshots/evening_aurora.png) | *aurora appears on clear winter nights* |
+
+---
 
 ## Features
 
 - Weather-aware — fetches real conditions via [Open-Meteo](https://open-meteo.com/) (no API key needed)
 - Time-of-day periods with smooth sun/moon arcs
 - Seasonal trees: blossoms in spring, falling leaves in autumn, bare branches + snow in winter
-- Aurora australis in winter nights
+- Aurora australis on clear winter nights
 - Street life: people with umbrellas, cats, dogs, pigeons, vehicles, birds, planes
 - Holiday decorations: Christmas lights, Easter eggs, New Year fireworks
 - Configurable city layout — pick density and seed until you like what you see
@@ -30,8 +46,8 @@ season (summer/autumn/winter/spring), moon phase, and local holidays.
 ## Quick start
 
 ```bash
-git clone https://github.com/TheHomelessTwig/dynamic-city.git
-cd dynamic-city
+git clone https://github.com/TheHomelessTwig/dynamic-city-wallpaper.git
+cd dynamic-city-wallpaper
 
 # Interactive setup — picks density, previews layout, writes config
 python3 dynamic-city.py --init
@@ -61,6 +77,11 @@ building_density = 6       # 1 (scattered) to 10 (packed skyline)
 [wallpaper]
 setter     = "awww"        # awww | swww
 transition = "wipe"
+
+[services]
+geo_provider     = "ipapi"       # ipapi | ip-api | ipinfo  (all free, no key)
+weather_provider = "open-meteo"  # open-meteo (free) | openweathermap (key required)
+# weather_api_key = ""
 ```
 
 ## Usage
@@ -95,8 +116,8 @@ conditions reuse the existing file.
 
 The generator renders a 320×180 pixel-art scene into 320 frames at 80 ms/frame,
 then upscales to your monitor resolution. All scene elements use deterministic
-RNG seeded by `layout_seed` for the city structure and `life_seed` for animated
-entities — the same config always produces the same city.
+RNG seeded by `layout_seed` for the city structure — the same config always
+produces the same city.
 
 ## Hyprlock integration
 
