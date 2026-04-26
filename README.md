@@ -8,17 +8,24 @@ season (summer/autumn/winter/spring), moon phase, and local holidays.
 
 ## Previews
 
-| Night — clear | Night — storm |
+| Night — spring (full moon) | Night — autumn (storm) |
 |:---:|:---:|
-| ![Night clear](screenshots/night_clear.gif) | ![Night storm](screenshots/night_storm.gif) |
+| ![Night spring](screenshots/night_clear.gif) | ![Night storm](screenshots/night_storm.gif) |
 
-| Dawn — rain | Day — clear | Dusk |
+| Dawn — winter rain | Day — summer | Dusk — autumn |
 |:---:|:---:|:---:|
-| ![Dawn rain](screenshots/dawn_rain.gif) | ![Day clear](screenshots/day_clear.gif) | ![Dusk](screenshots/dusk.gif) |
+| ![Dawn winter](screenshots/dawn_rain.gif) | ![Day summer](screenshots/day_clear.gif) | ![Dusk autumn](screenshots/dusk.gif) |
 
 | Evening — winter aurora | |
 |:---:|:---:|
-| ![Evening aurora](screenshots/evening_aurora.gif) | *aurora appears on clear winter nights* |
+| ![Evening aurora](screenshots/evening_aurora.gif) | *aurora australis appears on clear winter nights* |
+
+**Christmas** — lights and decorations appear automatically on Dec 18–25. Season follows
+your hemisphere: southern users get a summer Christmas, northern users get a winter one.
+
+| Christmas — winter (northern) | Christmas — summer (southern) |
+|:---:|:---:|
+| ![Christmas winter](screenshots/christmas_winter.gif) | ![Christmas summer](screenshots/christmas_summer.gif) |
 
 ---
 

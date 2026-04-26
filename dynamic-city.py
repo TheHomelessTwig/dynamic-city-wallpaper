@@ -115,13 +115,22 @@ def lerp_color(c1, c2, t):
     return tuple(int(a + (b - a) * t) for a, b in zip(c1, c2))
 
 # ── Season ────────────────────────────────────────────────────────────────────
-def get_season():
+def get_season(lat=None):
     from datetime import datetime
     month = datetime.now().month
-    if   month in (12, 1, 2): return 'summer'
-    elif month in (3, 4, 5):  return 'autumn'
-    elif month in (6, 7, 8):  return 'winter'
-    else:                     return 'spring'
+    # Southern Hemisphere (lat < 0 or unknown): Dec/Jan/Feb = summer
+    # Northern Hemisphere (lat > 0):            Dec/Jan/Feb = winter
+    north = lat is not None and lat > 0
+    if north:
+        if   month in (12, 1, 2): return 'winter'
+        elif month in (3, 4, 5):  return 'spring'
+        elif month in (6, 7, 8):  return 'summer'
+        else:                     return 'autumn'
+    else:
+        if   month in (12, 1, 2): return 'summer'
+        elif month in (3, 4, 5):  return 'autumn'
+        elif month in (6, 7, 8):  return 'winter'
+        else:                     return 'spring'
 
 _HOLIDAY_OVERRIDE = None
 
@@ -983,7 +992,7 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
     return img
 
 def build_gif(period, weather, out_path, season=None, moon_age=None, sky_pos=None,
-              life_seed=0, layout_seed=42, tree_density=6, building_density=6):
+              life_seed=0, layout_seed=42, tree_density=6, building_density=6, lat=None):
     if sky_pos is None:
         from datetime import datetime
         now_min = datetime.now().hour * 60 + datetime.now().minute
@@ -1018,7 +1027,7 @@ def build_gif(period, weather, out_path, season=None, moon_age=None, sky_pos=Non
     bats           = generate_bats(random.Random(65 + L), period)
     vehicles       = generate_vehicles(random.Random(67 + L), period)
 
-    season         = season or get_season()
+    season         = season or get_season(lat=lat)
     moon_age       = moon_age if moon_age is not None else moon_phase_age()
     n_people, n_birds = activity_levels(period, weather['rain'])
     lightning_events  = (generate_lightning_events(random.Random(55), clouds)
@@ -1412,7 +1421,7 @@ if __name__ == '__main__':
                 f"_s{int(weather['snow'])}_l{int(weather['lightning'])}.gif")
         build_gif(period, weather, path,
                   layout_seed=layout_seed, tree_density=tree_density,
-                  building_density=building_density)
+                  building_density=building_density, lat=loc_lat)
         apply_wallpaper(setter, path, transition='none')
         print('Preview set. Re-run to update.')
 
@@ -1431,7 +1440,8 @@ if __name__ == '__main__':
                   life_seed=int(ls) if ls else 0,
                   layout_seed=int(arg('--layout-seed', layout_seed)),
                   tree_density=int(arg('--tree-density', tree_density)),
-                  building_density=int(arg('--building-density', building_density)))
+                  building_density=int(arg('--building-density', building_density)),
+                  lat=loc_lat)
         print(f'  {out}')
 
     else:
@@ -1445,6 +1455,6 @@ if __name__ == '__main__':
             out = os.path.join(out_dir, f'{period}.gif')
             build_gif(period, w, out,
                       layout_seed=layout_seed, tree_density=tree_density,
-                      building_density=building_density)
+                      building_density=building_density, lat=loc_lat)
             print(f'  {period}.gif  ({os.path.getsize(out)//1024} KB)')
         print('Done.')
