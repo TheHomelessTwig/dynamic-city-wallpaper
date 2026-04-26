@@ -687,8 +687,19 @@ def draw_shooting_stars(draw, stars, p, frame):
 
 _AURORA_COLS = [(35,185,120),(40,200,140),(30,160,110),(70,215,165),(55,175,205),(120,80,200)]
 
-def draw_aurora(draw, p, season, weather, period, frame):
-    if season != 'winter' or period not in ('night', 'evening') or weather['clouds'] > 0:
+def _aurora_probability(lat):
+    """Chance of aurora on any given clear winter night, scaled by latitude."""
+    if lat is None:
+        return 0.30
+    alat = abs(lat)
+    if   alat >= 65: return 0.85   # aurora oval — Scandinavia, Alaska, Tierra del Fuego
+    elif alat >= 55: return 0.50   # Scotland, southern Canada, southern NZ
+    elif alat >= 45: return 0.20   # central Europe, northern US
+    elif alat >= 35: return 0.05   # rare storm-level events only
+    else:            return 0.01   # essentially never
+
+def draw_aurora(draw, p, season, weather, period, frame, show=True):
+    if not show or season != 'winter' or period not in ('night', 'evening') or weather['clouds'] > 0:
         return
     for band, by in enumerate([28, 36, 43, 50]):
         for bx in range(0, RENDER_W, 2):
@@ -939,7 +950,7 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
                  lightning_events, moon_age, weather, sky_pos,
                  streetlights, benches, cats, dogs, pigeons, plane,
                  shooting_stars, bats, people, n_people, birds, n_birds,
-                 vehicles):
+                 vehicles, show_aurora=True):
     p  = dict(PALETTES[period])
     sf = 1.0
     sf += 0.12 if period == 'day' and weather['rain'] == 0 and weather['clouds'] == 0 else 0
@@ -957,7 +968,7 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
     if p['stars']: draw_stars(draw, random.Random(41))
     if p['moon']:  draw_moon(draw, p, moon_age, sky_pos)
     if period in ('dawn', 'day', 'dusk'): draw_sun(draw, sky_pos)
-    draw_aurora(draw, p, season, weather, period, frame)
+    draw_aurora(draw, p, season, weather, period, frame, show=show_aurora)
     draw_shooting_stars(draw, shooting_stars, p, frame)
     draw_fireworks(draw, frame)
     draw_clouds(draw, p, clouds)
@@ -1032,11 +1043,13 @@ def build_gif(period, weather, out_path, season=None, moon_age=None, sky_pos=Non
     n_people, n_birds = activity_levels(period, weather['rain'])
     lightning_events  = (generate_lightning_events(random.Random(55), clouds)
                          if weather['lightning'] else {})
+    show_aurora = (random.Random(layout_seed + 99).random()
+                   < _aurora_probability(lat))
     frames = [render_frame(period, f, far, mid, near, clouds, trees, season,
                            lightning_events, moon_age, weather, sky_pos,
                            streetlights, benches, cats, dogs, pigeons, plane,
                            shooting_stars, bats, people, n_people, birds, n_birds,
-                           vehicles)
+                           vehicles, show_aurora=show_aurora)
               for f in range(FRAMES)]
     frames[0].save(out_path, save_all=True, append_images=frames[1:],
                    duration=FRAME_MS, loop=0, optimize=False, disposal=2)

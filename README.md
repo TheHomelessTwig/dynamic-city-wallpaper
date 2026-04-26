@@ -18,7 +18,7 @@ season (summer/autumn/winter/spring), moon phase, and local holidays.
 
 | Evening — winter aurora | |
 |:---:|:---:|
-| ![Evening aurora](screenshots/evening_aurora.gif) | *aurora australis appears on clear winter nights* |
+| ![Evening aurora](screenshots/evening_aurora.gif) | *aurora has a chance of appearing on clear winter nights — more likely at higher latitudes* |
 
 **Christmas** — lights and decorations appear automatically on Dec 18–25. Season follows
 your hemisphere: southern users get a summer Christmas, northern users get a winter one.
@@ -34,7 +34,7 @@ your hemisphere: southern users get a summer Christmas, northern users get a win
 - Weather-aware — fetches real conditions via [Open-Meteo](https://open-meteo.com/) (no API key needed)
 - Time-of-day periods with smooth sun/moon arcs
 - Seasonal trees: blossoms in spring, falling leaves in autumn, bare branches + snow in winter
-- Aurora australis on clear winter nights
+- Aurora on clear winter nights — probability scales with latitude (rare at 35°, likely above 65°)
 - Street life: people with umbrellas, cats, dogs, pigeons, vehicles, birds, planes
 - Holiday decorations: Christmas lights, Easter eggs, New Year fireworks
 - Configurable city layout — pick density and seed until you like what you see
