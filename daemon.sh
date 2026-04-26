@@ -27,6 +27,9 @@ EOF
 
 SETTER="$(_cfg wallpaper.setter awww)"
 TRANSITION="$(_cfg wallpaper.transition wipe)"
+GEO_PROVIDER="$(_cfg services.geo_provider ipapi)"
+WEATHER_PROVIDER="$(_cfg services.weather_provider open-meteo)"
+WEATHER_API_KEY="$(_cfg services.weather_api_key "")"
 
 _apply() {
     local gif="$1"

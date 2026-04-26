@@ -21,6 +21,11 @@ DEFAULT_CONFIG = {
     'location': {'lat': None, 'lon': None},
     'city':     {'layout_seed': 42, 'tree_density': 6, 'building_density': 6},
     'wallpaper':{'setter': 'awww', 'transition': 'wipe'},
+    'services': {
+        'geo_provider':     'ipapi',       # ipapi | ip-api | ipinfo
+        'weather_provider': 'open-meteo',  # open-meteo | openweathermap
+        'weather_api_key':  '',            # required for openweathermap
+    },
 }
 
 def load_config():
@@ -34,6 +39,8 @@ def load_config():
     for section, values in user.items():
         if section in cfg:
             cfg[section].update(values)
+        else:
+            cfg[section] = dict(values)
     return cfg
 
 # ── Canvas ────────────────────────────────────────────────────────────────────
@@ -50,15 +57,9 @@ CLOUD_COUNT = {0: 2,  1: 5,   2: 9}
 
 # ── Density ───────────────────────────────────────────────────────────────────
 def density_scale(density: int, sparse: float, dense: float) -> float:
-    """
-    Map a density value (1–10) to a number between sparse (at 1) and dense (at 10).
-    Used to interpolate gap sizes, building widths, etc.
-    """
-    # TODO(human): implement this function.
-    # density is an int from 1 (least dense) to 10 (most dense).
-    # Return a float between sparse and dense that reflects that scale.
-    # Consider whether a linear or curved interpolation feels better visually.
-    pass
+    """Map density 1–10 to a value between sparse and dense with a slight curve."""
+    t = ((density - 1) / 9.0) ** 0.7   # curve biases mid-values toward the dense end
+    return sparse + t * (dense - sparse)
 
 # ── Palettes ──────────────────────────────────────────────────────────────────
 PALETTES = {
@@ -1053,42 +1054,60 @@ def apply_wallpaper(setter, gif_path, transition='wipe'):
     else:
         raise ValueError(f"Unknown setter '{setter}'. Supported: awww, swww")
 
-# ── Weather ───────────────────────────────────────────────────────────────────
-def fetch_weather(lat=None, lon=None):
+# ── Geolocation providers ─────────────────────────────────────────────────────
+def _geolocate(provider='ipapi'):
+    """Return (lat, lon) by querying a free IP geolocation API."""
     import urllib.request, json as _json
+    if provider == 'ipapi':
+        # https://ipapi.co — free, 1 000 req/day, HTTPS
+        with urllib.request.urlopen('https://ipapi.co/json/', timeout=5) as r:
+            d = _json.loads(r.read())
+        return d['latitude'], d['longitude']
+    elif provider == 'ip-api':
+        # https://ip-api.com — free, 45 req/min, HTTP only on free tier
+        with urllib.request.urlopen('http://ip-api.com/json/', timeout=5) as r:
+            d = _json.loads(r.read())
+        if d.get('status') != 'success':
+            raise RuntimeError(f"ip-api error: {d.get('message')}")
+        return d['lat'], d['lon']
+    elif provider == 'ipinfo':
+        # https://ipinfo.io — free tier, no key needed for basic fields, HTTPS
+        with urllib.request.urlopen('https://ipinfo.io/json/', timeout=5) as r:
+            d = _json.loads(r.read())
+        lat, lon = d['loc'].split(',')
+        return float(lat), float(lon)
+    else:
+        raise ValueError(f"Unknown geo_provider '{provider}'. Options: ipapi, ip-api, ipinfo")
 
-    DEFAULTS = dict(rain=2, clouds=1, snow=False, vx=1, vy=4,
-                    lightning=False, sunrise_min=360, sunset_min=1080)
-    try:
-        if lat is None or lon is None:
-            with urllib.request.urlopen('https://ipapi.co/json/', timeout=5) as r:
-                loc = _json.loads(r.read())
-            lat, lon = loc['latitude'], loc['longitude']
+# ── Weather providers ─────────────────────────────────────────────────────────
+def _wind_vector(speed_ms):
+    """Convert wind speed (m/s) to (vx, vy) rain angle."""
+    if   speed_ms < 1.4: return 0, 5
+    elif speed_ms < 4.2: return 1, 4
+    elif speed_ms < 8.3: return 2, 3
+    else:                return 3, 2
 
-        url = (f'https://api.open-meteo.com/v1/forecast'
-               f'?latitude={lat}&longitude={lon}'
-               f'&current=weather_code,cloud_cover,temperature_2m,wind_speed_10m'
-               f'&daily=sunrise,sunset'
-               f'&timezone=auto')
-        with urllib.request.urlopen(url, timeout=8) as r:
-            data = _json.loads(r.read())
-        cur   = data['current']
-        daily = data['daily']
-        code  = cur['weather_code']
-        cover = cur['cloud_cover']
-        temp  = cur['temperature_2m']
-        wind  = cur['wind_speed_10m']
+def _parse_hhmm(s):
+    t = s.split('T')[1]
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
 
-        def parse_hhmm(s):
-            t = s.split('T')[1]
-            h, m = map(int, t.split(':'))
-            return h * 60 + m
+def _weather_open_meteo(lat, lon):
+    """Open-Meteo — free, no API key needed. https://open-meteo.com"""
+    import urllib.request, json as _json
+    url = (f'https://api.open-meteo.com/v1/forecast'
+           f'?latitude={lat}&longitude={lon}'
+           f'&current=weather_code,cloud_cover,temperature_2m,wind_speed_10m'
+           f'&daily=sunrise,sunset&timezone=auto')
+    with urllib.request.urlopen(url, timeout=8) as r:
+        data = _json.loads(r.read())
+    cur  = data['current']
+    code = cur['weather_code']
+    cover, temp, wind = cur['cloud_cover'], cur['temperature_2m'], cur['wind_speed_10m']
+    sunrise_min = _parse_hhmm(data['daily']['sunrise'][0])
+    sunset_min  = _parse_hhmm(data['daily']['sunset'][0])
 
-        sunrise_min = parse_hhmm(daily['sunrise'][0])
-        sunset_min  = parse_hhmm(daily['sunset'][0])
-    except Exception:
-        return DEFAULTS
-
+    # WMO weather code → scene values
     if   code <= 3:  rain = 0
     elif code <= 48: rain = 0
     elif code <= 55: rain = 1
@@ -1100,17 +1119,73 @@ def fetch_weather(lat=None, lon=None):
     elif code == 81: rain = 2
     else:            rain = 3
 
-    snow      = temp <= 2.0 and 51 <= code <= 77
-    clouds    = 0 if cover < 25 else (1 if cover < 65 else 2)
-    lightning = code >= 95
+    vx, vy = _wind_vector(wind / 3.6)   # km/h → m/s
+    return dict(
+        rain=rain, clouds=0 if cover < 25 else (1 if cover < 65 else 2),
+        snow=temp <= 2.0 and 51 <= code <= 77,
+        vx=vx, vy=vy, lightning=code >= 95,
+        sunrise_min=sunrise_min, sunset_min=sunset_min,
+    )
 
-    if   wind < 5:  vx, vy = 0, 5
-    elif wind < 15: vx, vy = 1, 4
-    elif wind < 30: vx, vy = 2, 3
-    else:           vx, vy = 3, 2
+def _weather_openweathermap(lat, lon, api_key):
+    """OpenWeatherMap current weather — free tier, API key required.
+    Sign up at https://openweathermap.org/api — free tier: 1 000 calls/day."""
+    import urllib.request, json as _json
+    from datetime import datetime, timezone
+    if not api_key:
+        raise ValueError("weather_api_key is required for openweathermap")
+    url = (f'https://api.openweathermap.org/data/2.5/weather'
+           f'?lat={lat}&lon={lon}&appid={api_key}&units=metric')
+    with urllib.request.urlopen(url, timeout=8) as r:
+        d = _json.loads(r.read())
 
-    return dict(rain=rain, clouds=clouds, snow=snow, vx=vx, vy=vy,
-                lightning=lightning, sunrise_min=sunrise_min, sunset_min=sunset_min)
+    code  = d['weather'][0]['id']   # OWM condition code
+    cover = d['clouds']['all']       # % cloud cover
+    temp  = d['main']['temp']        # °C
+    wind  = d['wind']['speed']       # m/s
+
+    def ts_to_hhmm(ts):
+        dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone()
+        return dt.hour * 60 + dt.minute
+
+    sunrise_min = ts_to_hhmm(d['sys']['sunrise'])
+    sunset_min  = ts_to_hhmm(d['sys']['sunset'])
+
+    # OWM condition code → scene values
+    if   code // 100 == 2: rain, lightning = 3, True          # Thunderstorm
+    elif code // 100 == 3: rain, lightning = 1, False          # Drizzle
+    elif code == 500:      rain, lightning = 1, False          # Light rain
+    elif code == 501:      rain, lightning = 2, False          # Moderate rain
+    elif code >= 502:      rain, lightning = 3, False          # Heavy rain
+    elif code // 100 == 6: rain, lightning = 1, False          # Snow (treat as drizzle)
+    elif code // 100 == 7: rain, lightning = 0, False          # Atmosphere (fog etc.)
+    elif code == 800:      rain, lightning = 0, False          # Clear
+    else:                  rain, lightning = 0, False          # Clouds
+
+    snow   = temp <= 2.0 and code // 100 == 6
+    vx, vy = _wind_vector(wind)
+    return dict(
+        rain=rain, clouds=0 if cover < 25 else (1 if cover < 65 else 2),
+        snow=snow, vx=vx, vy=vy, lightning=lightning,
+        sunrise_min=sunrise_min, sunset_min=sunset_min,
+    )
+
+def fetch_weather(lat=None, lon=None, geo_provider='ipapi',
+                  weather_provider='open-meteo', weather_api_key=''):
+    DEFAULTS = dict(rain=2, clouds=1, snow=False, vx=1, vy=4,
+                    lightning=False, sunrise_min=360, sunset_min=1080)
+    try:
+        if lat is None or lon is None:
+            lat, lon = _geolocate(geo_provider)
+        if weather_provider == 'open-meteo':
+            return _weather_open_meteo(lat, lon)
+        elif weather_provider == 'openweathermap':
+            return _weather_openweathermap(lat, lon, weather_api_key)
+        else:
+            raise ValueError(f"Unknown weather_provider '{weather_provider}'. "
+                             f"Options: open-meteo, openweathermap")
+    except Exception as e:
+        return DEFAULTS
 
 def _current_period(sunrise_min, sunset_min):
     from datetime import datetime
@@ -1148,15 +1223,25 @@ def _prompt_int(prompt, lo, hi, default):
         except ValueError:
             print("  Invalid input — enter a number.")
 
+def _prompt_choice(prompt, options, default):
+    opts_str = ' | '.join(f'{"[" + o + "]" if o == default else o}' for o in options)
+    while True:
+        raw = input(f"{prompt} ({opts_str}): ").strip().lower() or default
+        if raw in options:
+            return raw
+        print(f"  Options: {', '.join(options)}")
+
 def run_init():
     cfg_path = Path.home() / '.config' / 'dynamic-city' / 'config.toml'
     print("\n=== dynamic-city setup ===\n")
     print("Press Enter to keep the default value shown in brackets.\n")
 
+    # ── City layout ───────────────────────────────────────────────────────────
     tree_d = _prompt_int("Tree density   (1=sparse, 10=dense forest)", 1, 10, 6)
     bld_d  = _prompt_int("Building density (1=scattered, 10=packed skyline)", 1, 10, 6)
     print()
 
+    # ── Wallpaper setter ──────────────────────────────────────────────────────
     setter = _detect_setter()
     if setter:
         print(f"Detected wallpaper setter: {setter}")
@@ -1164,13 +1249,40 @@ def run_init():
         print("Could not detect awww or swww. Install one before running the daemon.")
         setter = 'awww'
 
+    # ── Services ──────────────────────────────────────────────────────────────
+    print("\n── External services ────────────────────────────────────────────")
+    print("These are used to detect your location and fetch live weather.")
+    print("All options listed are free with no account required unless noted.\n")
+
+    geo = _prompt_choice(
+        "Geolocation provider (auto-detects your lat/lon from IP)",
+        ['ipapi', 'ip-api', 'ipinfo'],
+        'ipapi',
+    )
+    print("  ipapi   → ipapi.co      (HTTPS, 1 000 req/day)")
+    print("  ip-api  → ip-api.com    (HTTP only on free tier, 45 req/min)")
+    print("  ipinfo  → ipinfo.io     (HTTPS, 50 000 req/month)\n")
+
+    weather = _prompt_choice(
+        "Weather provider",
+        ['open-meteo', 'openweathermap'],
+        'open-meteo',
+    )
+    print("  open-meteo     → open-meteo.com       (free, no key needed)")
+    print("  openweathermap → openweathermap.org   (free tier, API key required)\n")
+
+    owm_key = ''
+    if weather == 'openweathermap':
+        owm_key = input("OpenWeatherMap API key: ").strip()
+
+    # ── Layout preview loop ───────────────────────────────────────────────────
+    print()
     QUICK_WEATHER = dict(rain=1, clouds=1, snow=False, vx=1, vy=4,
                          lightning=False, sunrise_min=360, sunset_min=1080)
-
     chosen_seed = None
     while True:
         seed = random.randint(1, 99999)
-        print(f"\nLayout seed: {seed} — rendering preview (this takes ~10s)...")
+        print(f"Layout seed: {seed} — rendering preview (this takes ~10s)...")
         out  = f'/tmp/dynamic_city_init_{seed}.gif'
         build_gif('night', QUICK_WEATHER, out,
                   layout_seed=seed, tree_density=tree_d, building_density=bld_d)
@@ -1188,17 +1300,22 @@ def run_init():
             print("Setup cancelled.")
             return
 
-    res = input(f"\nMonitor resolution [default 2560x1440]: ").strip() or '2560x1440'
+    # ── Write config ──────────────────────────────────────────────────────────
+    res = input("\nMonitor resolution [default 2560x1440]: ").strip() or '2560x1440'
+
+    owm_key_line = f'\nweather_api_key = "{owm_key}"' if owm_key else \
+                   '\n# weather_api_key = ""   # required for openweathermap'
 
     cfg_path.parent.mkdir(parents=True, exist_ok=True)
     cfg_path.write_text(f"""\
 # dynamic-city configuration — generated by --init
-# Re-run `python3 dynamic-city.py --init` to pick a new layout.
+# Re-run `python3 dynamic-city.py --init` to change any of these.
 
 [display]
 resolution = "{res}"
 
 [location]
+# Uncomment to hard-code your coordinates (skips IP geolocation).
 # lat =
 # lon =
 
@@ -1210,6 +1327,13 @@ building_density = {bld_d}
 [wallpaper]
 setter     = "{setter}"
 transition = "wipe"
+
+[services]
+# Geolocation: ipapi | ip-api | ipinfo
+geo_provider = "{geo}"
+
+# Weather: open-meteo (free, no key) | openweathermap (free tier, key required)
+weather_provider = "{weather}"{owm_key_line}
 """)
     print(f"\nConfig written to {cfg_path}")
     print("Run daemon.sh to start the live wallpaper, or add it to your compositor startup.\n")
@@ -1227,6 +1351,9 @@ if __name__ == '__main__':
     transition       = cfg['wallpaper']['transition']
     loc_lat          = cfg['location'].get('lat') or None
     loc_lon          = cfg['location'].get('lon') or None
+    geo_provider     = cfg['services']['geo_provider']
+    weather_provider = cfg['services']['weather_provider']
+    weather_api_key  = cfg['services'].get('weather_api_key', '')
 
     def arg(flag, default=None):
         return args[args.index(flag) + 1] if flag in args else default
@@ -1258,7 +1385,7 @@ if __name__ == '__main__':
         print(f'Exported {FRAMES} frames to {out_dir}')
 
     elif '--fetch-weather' in args:
-        w      = fetch_weather(lat=loc_lat, lon=loc_lon)
+        w      = fetch_weather(lat=loc_lat, lon=loc_lon, geo_provider=geo_provider, weather_provider=weather_provider, weather_api_key=weather_api_key)
         period = _current_period(w['sunrise_min'], w['sunset_min'])
         wake   = _next_wake(w['sunrise_min'], w['sunset_min'])
         print(f"period={period} rain={w['rain']} clouds={w['clouds']} "
@@ -1272,7 +1399,7 @@ if __name__ == '__main__':
             weather = weather_from_args()
         else:
             print('Fetching weather...')
-            raw     = fetch_weather(lat=loc_lat, lon=loc_lon)
+            raw     = fetch_weather(lat=loc_lat, lon=loc_lon, geo_provider=geo_provider, weather_provider=weather_provider, weather_api_key=weather_api_key)
             weather = {k: raw[k] for k in ('rain','clouds','snow','vx','vy','lightning')}
             for k, flag in [('rain','--rain'),('clouds','--clouds'),('vx','--vx'),('vy','--vy')]:
                 if arg(flag): weather[k] = int(arg(flag))
@@ -1310,7 +1437,7 @@ if __name__ == '__main__':
     else:
         out_dir = os.path.dirname(os.path.abspath(__file__))
         print('Fetching weather...')
-        raw = fetch_weather(lat=loc_lat, lon=loc_lon)
+        raw = fetch_weather(lat=loc_lat, lon=loc_lon, geo_provider=geo_provider, weather_provider=weather_provider, weather_api_key=weather_api_key)
         w   = {k: raw[k] for k in ('rain','clouds','snow','vx','vy','lightning')}
         print(f"  rain={w['rain']}  clouds={w['clouds']}  snow={w['snow']}  lightning={w['lightning']}")
         print('Generating wallpapers...')

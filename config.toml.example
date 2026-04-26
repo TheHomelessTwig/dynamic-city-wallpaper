@@ -33,3 +33,21 @@ setter = "awww"
 # awww:  wipe | fade | grow | outer | random
 # swww:  simple | fade | wipe | grow | outer | any
 transition = "wipe"
+
+[services]
+# ── Geolocation ───────────────────────────────────────────────────────────────
+# Used only when [location] lat/lon are not set, to detect your city from your IP.
+#
+# ipapi   → https://ipapi.co/json/      free · HTTPS · 1 000 req/day
+# ip-api  → http://ip-api.com/json/     free · HTTP only on free tier · 45 req/min
+# ipinfo  → https://ipinfo.io/json/     free · HTTPS · 50 000 req/month
+#
+geo_provider = "ipapi"
+
+# ── Weather ───────────────────────────────────────────────────────────────────
+# open-meteo     → https://open-meteo.com           free · no key needed
+# openweathermap → https://openweathermap.org/api   free tier · API key required
+#                  Sign up at openweathermap.org → API keys → "Current Weather Data"
+#
+weather_provider = "open-meteo"
+# weather_api_key = ""   # uncomment and fill in for openweathermap
