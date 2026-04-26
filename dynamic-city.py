@@ -9,6 +9,7 @@ Usage:
   python3 dynamic-city.py --fetch-weather                               # print shell vars and exit
   python3 dynamic-city.py --period night --rain 2 --clouds 1 \
     --snow 0 --vx 1 --vy 4 --lightning 0 --out /tmp/foo.gif            # daemon mode
+  python3 dynamic-city.py --preview night --lat -65                    # test aurora at high southern latitude
 """
 
 from PIL import Image, ImageDraw
@@ -688,15 +689,17 @@ def draw_shooting_stars(draw, stars, p, frame):
 _AURORA_COLS = [(35,185,120),(40,200,140),(30,160,110),(70,215,165),(55,175,205),(120,80,200)]
 
 def _aurora_probability(lat):
-    """Chance of aurora on any given clear winter night, scaled by latitude."""
+    """
+    Chance of aurora (Borealis north, Australis south) on a clear winter night.
+    Scales smoothly outward from the equator — zero in the tropics, peaks near 70°.
+    """
     if lat is None:
         return 0.30
-    alat = abs(lat)
-    if   alat >= 65: return 0.85   # aurora oval — Scandinavia, Alaska, Tierra del Fuego
-    elif alat >= 55: return 0.50   # Scotland, southern Canada, southern NZ
-    elif alat >= 45: return 0.20   # central Europe, northern US
-    elif alat >= 35: return 0.05   # rare storm-level events only
-    else:            return 0.01   # essentially never
+    alat = abs(lat)          # symmetric: same curve in both hemispheres
+    if alat < 25:
+        return 0.0           # tropics — aurora never reaches here
+    t = min(1.0, (alat - 25) / 45.0)   # 0 at 25°, 1 at 70°+
+    return round(0.85 * (t ** 1.5), 3)
 
 def draw_aurora(draw, p, season, weather, period, frame, show=True):
     if not show or season != 'winter' or period not in ('night', 'evening') or weather['clouds'] > 0:
@@ -1379,6 +1382,10 @@ if __name__ == '__main__':
 
     def arg(flag, default=None):
         return args[args.index(flag) + 1] if flag in args else default
+
+    # CLI flags override config lat/lon (useful for testing aurora at specific latitude)
+    if arg('--lat'): loc_lat = float(arg('--lat'))
+    if arg('--lon'): loc_lon = float(arg('--lon'))
 
     def bool_arg(flag):
         v = arg(flag)

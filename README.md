@@ -16,9 +16,9 @@ season (summer/autumn/winter/spring), moon phase, and local holidays.
 |:---:|:---:|:---:|
 | ![Dawn winter](screenshots/dawn_rain.gif) | ![Day summer](screenshots/day_clear.gif) | ![Dusk autumn](screenshots/dusk.gif) |
 
-| Evening — winter aurora | |
+| Evening — Aurora Australis (south) / Borealis (north) | |
 |:---:|:---:|
-| ![Evening aurora](screenshots/evening_aurora.gif) | *aurora has a chance of appearing on clear winter nights — more likely at higher latitudes* |
+| ![Evening aurora](screenshots/evening_aurora.gif) | *has a chance of appearing on clear winter nights — probability scales outward from the equator, peaking near 70° in both hemispheres* |
 
 **Christmas** — lights and decorations appear automatically on Dec 18–25. Season follows
 your hemisphere: southern users get a summer Christmas, northern users get a winter one.
@@ -34,7 +34,7 @@ your hemisphere: southern users get a summer Christmas, northern users get a win
 - Weather-aware — fetches real conditions via [Open-Meteo](https://open-meteo.com/) (no API key needed)
 - Time-of-day periods with smooth sun/moon arcs
 - Seasonal trees: blossoms in spring, falling leaves in autumn, bare branches + snow in winter
-- Aurora on clear winter nights — probability scales with latitude (rare at 35°, likely above 65°)
+- Aurora Australis / Borealis on clear winter nights — probability scales outward from the equator in both hemispheres, peaking near 70°
 - Street life: people with umbrellas, cats, dogs, pigeons, vehicles, birds, planes
 - Holiday decorations: Christmas lights, Easter eggs, New Year fireworks
 - Configurable city layout — pick density and seed until you like what you see
