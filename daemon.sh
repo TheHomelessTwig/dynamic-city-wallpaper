@@ -25,6 +25,8 @@ except Exception:
 EOF
 }
 
+LIFE_SEED=$(( RANDOM % 10000 ))
+
 SETTER="$(_cfg wallpaper.setter awww)"
 TRANSITION="$(_cfg wallpaper.transition wipe)"
 GEO_PROVIDER="$(_cfg services.geo_provider ipapi)"
@@ -43,17 +45,20 @@ _apply() {
 
 while true; do
     eval "$(python3 "$GENERATOR" --fetch-weather 2>/dev/null)" || {
-        period=night; rain=2; clouds=1; snow=0; vx=1; vy=4; lightning=0; wake=1800
+        period=night; rain=2; clouds=1; snow=0; vx=1; vy=4; lightning=0; fog=0; hail=0; sandstorm=0; wake=1800
     }
 
-    state="${period}_r${rain}_c${clouds}_s${snow}_x${vx}_y${vy}_l${lightning}_$(date +%Y%m%d)"
+    state="${period}_r${rain}_c${clouds}_s${snow}_x${vx}_y${vy}_l${lightning}_f${fog}_h${hail}_ss${sandstorm}_$(date +%Y%m%d)_s${LIFE_SEED}"
     gif="/tmp/dynamic_city_${state}.gif"
     last=$(cat "$STATE_FILE" 2>/dev/null || echo "")
 
     if [[ "$state" != "$last" || ! -f "$gif" ]]; then
+        rm -f /tmp/dynamic_city_*.gif
         python3 "$GENERATOR" \
             --period "$period" --rain "$rain" --clouds "$clouds" \
             --snow "$snow" --vx "$vx" --vy "$vy" --lightning "$lightning" \
+            --fog "$fog" --hail "$hail" --sandstorm "$sandstorm" \
+            --life-seed "$LIFE_SEED" \
             --out "$gif"
         echo "$state" > "$STATE_FILE"
 

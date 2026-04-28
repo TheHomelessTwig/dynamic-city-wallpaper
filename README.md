@@ -1,8 +1,8 @@
 # dynamic-city-wallpaper
 
 An animated pixel-art wallpaper for Wayland desktops. The scene reacts to live
-weather (rain, snow, lightning, wind angle), time of day (dawn/day/dusk/evening/night),
-season (summer/autumn/winter/spring), moon phase, and local holidays.
+weather, time of day, season, moon phase, and local holidays — and looks
+different every time the daemon starts.
 
 ---
 
@@ -16,12 +16,21 @@ season (summer/autumn/winter/spring), moon phase, and local holidays.
 |:---:|:---:|:---:|
 | ![Dawn winter](screenshots/dawn_rain.gif) | ![Day summer](screenshots/day_clear.gif) | ![Dusk autumn](screenshots/dusk.gif) |
 
-| Evening — Aurora Australis (south) / Borealis (north) | |
+| Dawn — fog | Day — sandstorm |
 |:---:|:---:|
-| ![Evening aurora](screenshots/evening_aurora.gif) | *has a chance of appearing on clear winter nights — probability scales outward from the equator, peaking near 70° in both hemispheres* |
+| ![Dawn fog](screenshots/dawn_fog.gif) | ![Sandstorm](screenshots/sandstorm.gif) |
 
-**Christmas** — lights and decorations appear automatically on Dec 18–25. Season follows
-your hemisphere: southern users get a summer Christmas, northern users get a winter one.
+| Evening — Aurora Australis / Borealis | |
+|:---:|:---:|
+| ![Evening aurora](screenshots/evening_aurora.gif) | *appears on clear winter nights — probability scales outward from the equator, peaking near 70° in both hemispheres* |
+
+### Holidays
+
+| Halloween | Holi | Chinese New Year |
+|:---:|:---:|:---:|
+| ![Halloween](screenshots/halloween.gif) | ![Holi](screenshots/holi.gif) | ![Chinese New Year](screenshots/cny_evening.gif) |
+
+**Christmas** — lights, decorations, and reindeer appear automatically on Dec 18–25.
 
 | Christmas — winter (northern) | Christmas — summer (southern) |
 |:---:|:---:|
@@ -31,13 +40,69 @@ your hemisphere: southern users get a summer Christmas, northern users get a win
 
 ## Features
 
-- Weather-aware — fetches real conditions via [Open-Meteo](https://open-meteo.com/) (no API key needed)
-- Time-of-day periods with smooth sun/moon arcs
-- Seasonal trees: blossoms in spring, falling leaves in autumn, bare branches + snow in winter
-- Aurora Australis / Borealis on clear winter nights — probability scales outward from the equator in both hemispheres, peaking near 70°
-- Street life: people with umbrellas, cats, dogs, pigeons, vehicles, birds, planes
-- Holiday decorations: Christmas lights, Easter eggs, New Year fireworks
-- Configurable city layout — pick density and seed until you like what you see
+### Weather
+- **Rain** — 4 intensity levels, wind-angled drops, puddle reflections, umbrellas
+- **Snow** — drifting flakes, snow caps on trees and buildings
+- **Fog** — ground-level haze rolling through the scene at dawn and dusk
+- **Hail** — vertical white drops with bounce marks on the ground
+- **Sandstorm** — horizontal streaming particles, sandy sky (OpenWeatherMap only)
+- **Lightning** — bolt strikes with a flash effect
+- **Rainbow** — 30% chance after rain clears on a bright day
+
+### Time of day
+Five periods with smooth sun/moon arcs: dawn, day, dusk, evening, night.
+
+### Seasons
+- **Spring** — cherry blossom petals drifting
+- **Summer** — richer greens, fireflies at night, butterflies by day
+- **Autumn** — orange/red trees, falling leaves, more foxes and squirrels
+- **Winter** — bare branches, snow, frost on building ledges
+
+Seasons are hemisphere-aware — southern users get summer in December.
+
+### Street life
+
+All creatures vary by time of day, season, and weather.
+
+| Creature | Active | Notes |
+|----------|--------|-------|
+| People | all day | clothing tinted to match the current holiday |
+| Birds | dawn–dusk | more in spring/summer |
+| Pigeons | all day | flocks grow in spring/summer |
+| Cats | evening/night | more in summer, fewer in winter |
+| Dogs | day–evening | more walks in spring/summer |
+| Foxes | evening/night | more common in autumn/winter |
+| Squirrels | day–dusk | autumn-heavy (collecting nuts) |
+| Butterflies | day, spring/summer | flutter among the trees |
+| Ducks | day | more in rainy weather |
+| Bats | evening/night | guaranteed on Halloween |
+| Fireflies | evening/night, summer | rare summer blink |
+| Reindeer | night/evening, Christmas | fly in formation across the sky |
+| Plane | occasional | period-dependent |
+
+### Holidays
+
+Detected automatically by date. People's clothing shifts to match each holiday.
+
+| Holiday | Date | Effect |
+|---------|------|--------|
+| Valentine's Day | Feb 14 | pink sky, floating hearts, red clothing |
+| St Patrick's Day | Mar 17 | green sky, shamrocks on the ground, green clothing |
+| Holi | full moon in March ±3 days | coloured powder particles, vivid clothing |
+| Easter | Easter Sunday ±3 days | painted eggs on the ground |
+| Chinese New Year | 2nd new moon after Dec 21 ±3 days | red sky, lanterns on streetlights, fireworks, red clothing |
+| 4th of July | Jul 4 | fireworks |
+| Halloween | Oct 24–31 | pumpkins, guaranteed bats, orange/purple sky, dark clothing |
+| Guy Fawkes Night | Nov 5 | fireworks |
+| Diwali | new moon in Oct/Nov ±3 days | golden sky, all windows lit, diya lamps, warm clothing |
+| Christmas | Dec 18–25 | rooftop lights, reindeer, fireworks, red/green clothing |
+| New Year | Dec 31–Jan 1 | fireworks |
+
+### Other
+- Moon phases cycle realistically
+- Aurora Australis / Borealis — probability scales with latitude
+
+---
 
 ## Requirements
 
@@ -103,6 +168,15 @@ python3 dynamic-city.py --preview day
 
 # Preview with forced conditions
 python3 dynamic-city.py --preview night --rain 3 --lightning 1
+python3 dynamic-city.py --preview dawn --fog 1
+python3 dynamic-city.py --preview day --sandstorm 1
+
+# Preview a holiday
+python3 dynamic-city.py --preview night --holiday halloween
+python3 dynamic-city.py --preview evening --holiday cny
+python3 dynamic-city.py --preview day --holiday holi
+# Other holiday values: newyear, easter, valentines, stpatricks,
+#                       diwali, july4, guyfawkes, christmas
 
 # Start the daemon manually
 bash daemon.sh
@@ -122,9 +196,11 @@ changed. The generated GIF is cached in `/tmp/` by state key so identical
 conditions reuse the existing file.
 
 The generator renders a 320×180 pixel-art scene into 320 frames at 80 ms/frame,
-then upscales to your monitor resolution. All scene elements use deterministic
-RNG seeded by `layout_seed` for the city structure — the same config always
-produces the same city.
+then upscales to your monitor resolution. City structure (buildings, trees,
+street furniture) is deterministic — seeded by `layout_seed` so the same config
+always produces the same skyline. Street life (creatures, aurora, rainbow) is
+re-randomised each time the daemon starts, so the scene looks different across
+reboots.
 
 **Device load:** the GIF render takes ~10 seconds on one CPU core when conditions
 change, then the process exits. Playback is handled entirely by the wallpaper

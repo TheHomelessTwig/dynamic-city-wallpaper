@@ -167,6 +167,87 @@ def _is_new_year():
     d = datetime.now()
     return (d.month == 12 and d.day == 31) or (d.month == 1 and d.day == 1)
 
+def _is_halloween_week():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'halloween'
+    from datetime import datetime
+    d = datetime.now()
+    return d.month == 10 and 24 <= d.day <= 31
+
+_LUNAR_CYCLE = 29.53059
+
+def _lunar_age(dt=None):
+    from datetime import datetime
+    if dt is None: dt = datetime.now()
+    return ((dt - datetime(2000, 1, 6, 18, 14)).total_seconds() / 86400) % _LUNAR_CYCLE
+
+def _next_new_moon(dt):
+    from datetime import timedelta
+    days = (_LUNAR_CYCLE - _lunar_age(dt)) % _LUNAR_CYCLE or _LUNAR_CYCLE
+    return dt + timedelta(days=days)
+
+def _next_full_moon(dt):
+    from datetime import timedelta
+    days = (14.765 - _lunar_age(dt)) % _LUNAR_CYCLE or _LUNAR_CYCLE
+    return dt + timedelta(days=days)
+
+def _chinese_new_year_date():
+    from datetime import datetime, timedelta
+    year = datetime.now().year
+    dec21 = datetime(year - 1, 12, 21)
+    nm1 = _next_new_moon(dec21 + timedelta(days=1))
+    nm2 = _next_new_moon(nm1  + timedelta(days=1))
+    cny = nm2.date()
+    if (datetime.now().date() - cny).days > 180:
+        dec21 = datetime(year, 12, 21)
+        nm1 = _next_new_moon(dec21 + timedelta(days=1))
+        nm2 = _next_new_moon(nm1  + timedelta(days=1))
+        cny = nm2.date()
+    return cny
+
+def _holi_date():
+    from datetime import datetime
+    return _next_full_moon(datetime(datetime.now().year, 3, 1)).date()
+
+def _diwali_date():
+    from datetime import datetime, timedelta
+    year = datetime.now().year
+    return _next_new_moon(datetime(year, 10, 14) + timedelta(days=1)).date()
+
+def _is_valentines():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'valentines'
+    from datetime import datetime
+    d = datetime.now(); return d.month == 2 and d.day == 14
+
+def _is_st_patricks():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'stpatricks'
+    from datetime import datetime
+    d = datetime.now(); return d.month == 3 and d.day == 17
+
+def _is_july4():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'july4'
+    from datetime import datetime
+    d = datetime.now(); return d.month == 7 and d.day == 4
+
+def _is_guy_fawkes():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'guyfawkes'
+    from datetime import datetime
+    d = datetime.now(); return d.month == 11 and d.day == 5
+
+def _is_holi_week():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'holi'
+    from datetime import datetime
+    return abs((datetime.now().date() - _holi_date()).days) <= 3
+
+def _is_chinese_new_year_week():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'cny'
+    from datetime import datetime
+    return abs((datetime.now().date() - _chinese_new_year_date()).days) <= 3
+
+def _is_diwali_week():
+    if _HOLIDAY_OVERRIDE: return _HOLIDAY_OVERRIDE == 'diwali'
+    from datetime import datetime
+    return abs((datetime.now().date() - _diwali_date()).days) <= 3
+
 TREE_TRUNK = (45, 32, 20)
 TREE_COLORS = {
     'summer': [(32, 98, 48),   (48, 128, 58),  (65, 150, 70)],
@@ -426,9 +507,12 @@ def generate_street_furniture(rng):
 CAT_COLORS = [(180,152,118),(42,40,38),(148,145,140),(225,200,165),(200,155,100)]
 DOG_COLORS = [(200,175,140),(45,40,36),(168,128,92),(222,218,208),(148,112,82)]
 
-def generate_cats(rng, period):
+def generate_cats(rng, period, season='summer'):
     if period == 'day': return []
-    n = rng.randint(1, 3) if period in ('night', 'evening') else rng.randint(0, 2)
+    if period in ('night', 'evening'):
+        n = rng.randint(1, 4) if season in ('spring', 'summer') else rng.randint(0, 2) if season == 'winter' else rng.randint(1, 3)
+    else:
+        n = rng.randint(0, 2) if season != 'winter' else rng.randint(0, 1)
     cats = []
     for _ in range(n):
         walking = rng.random() < 0.35
@@ -439,19 +523,24 @@ def generate_cats(rng, period):
                      rng.randint(1, 2) if walking else 0))
     return cats
 
-def generate_dogs(rng, period):
-    n = rng.randint(0, 2) if period in ('day', 'dawn', 'dusk', 'evening') else rng.randint(0, 1)
+def generate_dogs(rng, period, season='summer'):
+    if period in ('day', 'dawn', 'dusk', 'evening'):
+        n = rng.randint(1, 3) if season in ('spring', 'summer') else rng.randint(0, 1) if season == 'winter' else rng.randint(0, 2)
+    else:
+        n = rng.randint(0, 1)
     return [(rng.randint(8, RENDER_W - 8),
              DOG_COLORS[rng.randint(0, len(DOG_COLORS) - 1)],
              rng.choice([-1, 1]),
              rng.randint(1, 2))
             for _ in range(n)]
 
-def generate_pigeons(rng):
+def generate_pigeons(rng, season='summer'):
+    n = {'winter': rng.randint(1, 3), 'autumn': rng.randint(2, 4),
+         'spring': rng.randint(3, 6), 'summer': rng.randint(3, 7)}[season]
     return [(rng.randint(20, RENDER_W - 20),
              rng.randint(0, FRAMES - 1),
              rng.randint(10, 25))
-            for _ in range(rng.randint(2, 5))]
+            for _ in range(n)]
 
 def generate_plane(rng, period):
     if rng.random() < 0.72: return None
@@ -463,11 +552,58 @@ def generate_shooting_stars(rng, period):
              rng.randint(0, FRAMES - 18))
             for _ in range(rng.randint(0, 2))]
 
-def generate_bats(rng, period):
-    if period not in ('night', 'evening') or rng.random() < 0.55: return []
+def generate_bats(rng, period, season='summer'):
+    if period not in ('night', 'evening'): return []
+    if _is_halloween_week():
+        skip_prob = 0.0
+    else:
+        skip_prob = {'summer': 0.35, 'autumn': 0.40, 'spring': 0.55, 'winter': 0.82}[season]
+    if rng.random() < skip_prob: return []
     return [(rng.randint(0, RENDER_W), rng.randint(8, GROUND_Y // 2 - 5),
              rng.randint(3, 5))
             for _ in range(rng.randint(1, 3))]
+
+def generate_foxes(rng, period, season='summer'):
+    if period == 'day': return []
+    base = {'night': 2, 'evening': 2, 'dusk': 1, 'dawn': 1}.get(period, 0)
+    if season in ('autumn', 'winter'): base = min(base + 1, 3)
+    if season == 'summer':             base = max(0, base - 1)
+    n = rng.randint(0, base)
+    return [(rng.randint(8, RENDER_W - 8),
+             FOX_COLORS[rng.randint(0, len(FOX_COLORS) - 1)],
+             rng.choice([-1, 1]), rng.randint(1, 2))
+            for _ in range(n)]
+
+def generate_squirrels(rng, period, season='summer'):
+    if period in ('night', 'evening'): return []
+    n_max = {'autumn': 3, 'spring': 2, 'summer': 1, 'winter': 0}[season]
+    n = rng.randint(0, n_max)
+    return [(rng.randint(8, RENDER_W - 8),
+             SQUIRREL_COLORS[rng.randint(0, len(SQUIRREL_COLORS) - 1)],
+             rng.choice([-1, 1]), rng.randint(2, 3))
+            for _ in range(n)]
+
+def generate_butterflies(rng, period, season='summer'):
+    if season not in ('spring', 'summer') or period not in ('day', 'dawn', 'dusk'): return []
+    n = rng.randint(2, 5)
+    return [(rng.randint(10, RENDER_W - 10),
+             rng.randint(TREE_TOP_Y + 5, GROUND_Y - 20),
+             BUTTERFLY_COLORS[rng.randint(0, len(BUTTERFLY_COLORS) - 1)],
+             rng.randint(0, FRAMES - 1))
+            for _ in range(n)]
+
+def generate_ducks(rng, period, rain=0):
+    if period == 'night': return []
+    n = min(rng.randint(0, 2) + rain, 4)
+    return [(rng.randint(8, RENDER_W - 8),
+             DUCK_COLORS[rng.randint(0, len(DUCK_COLORS) - 1)],
+             rng.choice([-1, 1]))
+            for _ in range(n)]
+
+def generate_reindeer(rng, period):
+    if not _is_christmas_week() or period not in ('night', 'evening'): return None
+    if rng.random() < 0.4: return None
+    return (rng.randint(-80, RENDER_W // 3), rng.randint(18, 50))
 
 PINE_COLORS    = [(28, 72, 38), (38, 95, 48), (22, 58, 32)]
 PERSON_COLORS  = [(180,70,70),(70,90,180),(70,150,90),(180,140,60),(130,70,150),(60,140,160),(190,110,50)]
@@ -476,11 +612,19 @@ UMBRELLA_COLORS= [(200,60,60),(60,110,200),(55,140,85),(175,140,50)]
 CHILD_COLORS   = [(220,75,75),(75,130,220),(80,195,100),(220,185,55),(190,80,190),(60,195,195)]
 MAX_PEOPLE, MAX_BIRDS = 12, 10
 
-def activity_levels(period, rain_level):
-    base_p = {'night': 1, 'dawn': 3, 'day': 9,  'dusk': 6, 'evening': 4}[period]
-    base_b = {'night': 0, 'dawn': 5, 'day': 8,  'dusk': 3, 'evening': 1}[period]
-    factor = [1.0, 0.6, 0.3, 0.1][rain_level]
-    return max(0, int(base_p * factor)), max(0, int(base_b * factor))
+def activity_levels(period, rain_level, season='summer'):
+    base_p    = {'night': 1, 'dawn': 3, 'day': 9,  'dusk': 6, 'evening': 4}[period]
+    base_b    = {'night': 0, 'dawn': 5, 'day': 8,  'dusk': 3, 'evening': 1}[period]
+    rain_walk = [1.0, 0.6, 0.3, 0.1][rain_level]
+    if season in ('spring', 'summer') and period in ('evening', 'dusk'):
+        base_p = int(base_p * 1.6)
+    elif season == 'winter' and period in ('evening', 'night'):
+        base_p = max(1, int(base_p * 0.5))
+    if season in ('spring', 'summer'):
+        base_b = int(base_b * 1.25)
+    elif season == 'winter':
+        base_b = max(0, int(base_b * 0.5))
+    return max(0, int(base_p * rain_walk)), max(0, int(base_b * rain_walk))
 
 def draw_trees(draw, trees, season, snow):
     colors = TREE_COLORS[season]
@@ -529,6 +673,21 @@ def draw_people(draw, people, rain, frame, lit_lamps=None):
         if lit_lamps and any(abs(x - lx) <= 5 for lx in lit_lamps):
             skin  = lerp_color(skin,  (255, 232, 175), 0.28)
             color = lerp_color(color, (255, 238, 195), 0.22)
+        if _is_valentines():
+            color = lerp_color(color, (200, 60,  80),  0.55)
+        elif _is_st_patricks():
+            color = lerp_color(color, (30,  150, 50),  0.55)
+        elif _is_chinese_new_year_week():
+            color = lerp_color(color, (200, 40,  30),  0.60)
+        elif _is_diwali_week():
+            color = lerp_color(color, (210, 150, 30),  0.45)
+        elif _is_holi_week():
+            color = lerp_color(color, _HOLI_COLORS[i % len(_HOLI_COLORS)], 0.75)
+        elif _is_halloween_week():
+            color = lerp_color(color, (80,  30,  80),  0.35)
+        elif _is_christmas_week():
+            tint  = (180, 40, 40) if i % 2 == 0 else (30, 100, 40)
+            color = lerp_color(color, tint, 0.45)
         head_y     = gy - height + 1
         leg_rows   = 3 if height >= 7 else 2
         stride_spd = 5 if is_child else 8
@@ -722,7 +881,8 @@ _FW_RAYS = [(round(r * math.cos(math.radians(a))),
             for i, r in enumerate([3, 6, 10])]
 
 def draw_fireworks(draw, frame):
-    if not _is_new_year():
+    if not (_is_new_year() or _is_july4() or _is_guy_fawkes() or
+            _is_diwali_week() or _is_chinese_new_year_week()):
         return
     r = random.Random(88)
     for _ in range(5):
@@ -738,6 +898,247 @@ def draw_fireworks(draw, frame):
                     px, py = cx + dx, cy + dy
                     if 0 <= px < RENDER_W and 0 <= py < RENDER_H:
                         draw.point((px, py), fill=color)
+
+_FOG_BAND = None
+def _get_fog_band():
+    global _FOG_BAND
+    if _FOG_BAND is None:
+        r = random.Random(83)
+        _FOG_BAND = [(r.randint(0, RENDER_W - 1), r.randint(GROUND_Y - 40, RENDER_H - 1))
+                     for _ in range(2000)]
+    return _FOG_BAND
+
+def draw_fog(draw, p, frame):
+    drift    = (frame // 6) % RENDER_W
+    fog_top  = GROUND_Y - 40
+    fog_h    = RENDER_H - fog_top
+    for (px, py) in _get_fog_band():
+        x     = (px + drift) % RENDER_W
+        t     = (py - fog_top) / fog_h
+        blend = 0.18 + t * 0.62
+        sky   = lerp_color(p['sky_top'], p['sky_bot'], min(1.0, py / GROUND_Y))
+        draw.point((x, py), fill=lerp_color(sky, _FOG_COLOR, blend))
+
+def generate_fireflies(rng, period, season):
+    if season != 'summer' or period not in ('evening', 'night'):
+        return []
+    n = rng.randint(5, 12)
+    return [(rng.randint(0, RENDER_W - 1),
+             rng.randint(TREE_TOP_Y + 8, GROUND_Y - 8),
+             rng.randint(0, FRAMES - 1))
+            for _ in range(n)]
+
+def draw_fireflies(draw, fireflies, frame):
+    for (bx, by, phase) in fireflies:
+        if (frame + phase) % 30 < 8:
+            draw.point((bx % RENDER_W, by), fill=_FIREFLY_C)
+
+_HAIL = None
+def _get_hail():
+    global _HAIL
+    if _HAIL is None:
+        r = random.Random(97)
+        _HAIL = [(r.randint(0, RENDER_W - 1), r.randint(0, RENDER_W - 1))
+                 for _ in range(350)]
+    return _HAIL
+
+def draw_hail(draw, frame):
+    for (bx, by) in _get_hail():
+        y = (by + frame * 4) % RENDER_W
+        if y < GROUND_Y:
+            draw.point((bx % RENDER_W, y), fill=(200, 218, 238))
+        elif y < GROUND_Y + 3:
+            draw.point((bx % RENDER_W, GROUND_Y), fill=(175, 198, 220))
+
+_SAND = None
+def _get_sand():
+    global _SAND
+    if _SAND is None:
+        r = random.Random(89)
+        _SAND = [(r.randint(0, RENDER_W - 1), r.randint(0, RENDER_H - 1),
+                  r.randint(3, 6))
+                 for _ in range(1800)]
+    return _SAND
+
+def draw_sandstorm(draw, frame):
+    for (bx, py, speed) in _get_sand():
+        x = (bx + frame * speed) % RENDER_W
+        draw.point((x, py), fill=_SAND_COLORS[(bx + py) % len(_SAND_COLORS)])
+
+def draw_pumpkins(draw, rng):
+    for _ in range(rng.randint(3, 6)):
+        px = rng.randint(10, RENDER_W - 12)
+        py = GROUND_Y - 2
+        draw.rectangle([px, py - 2, px + 3, py], fill=_PUMPKIN_C)
+        draw.point((px + 1, py - 3), fill=_PUMPKIN_STEM)
+        draw.point((px,     py - 1), fill=_PUMPKIN_FACE)
+        draw.point((px + 2, py - 1), fill=_PUMPKIN_FACE)
+        draw.point((px + 1, py),     fill=_PUMPKIN_FACE)
+
+_HEARTS = None
+def _get_hearts():
+    global _HEARTS
+    if _HEARTS is None:
+        r = random.Random(14)
+        _HEARTS = [(r.randint(0, RENDER_W - 1), r.randint(15, GROUND_Y - 25),
+                    r.randint(1, 2), r.choice([-1, 0, 1]))
+                   for _ in range(10)]
+    return _HEARTS
+
+def draw_valentines(draw, frame):
+    for (bx, by, speed, drift) in _get_hearts():
+        y = (by - frame * speed // 4) % (GROUND_Y - 5)
+        x = (bx + drift * (frame // 10)) % RENDER_W
+        c = _HEART_COLORS[(bx + by) % len(_HEART_COLORS)]
+        for (dx, dy) in _HEART_SHAPE:
+            draw.point(((x + dx) % RENDER_W, y + dy), fill=c)
+
+def draw_shamrocks(draw, rng):
+    for _ in range(rng.randint(5, 9)):
+        sx = rng.randint(8, RENDER_W - 8)
+        sy = GROUND_Y - 4
+        for (dx, dy) in _SHAMROCK_SHAPE:
+            draw.point(((sx + dx) % RENDER_W, sy + dy), fill=_SHAMROCK_C)
+
+_HOLI_POWDER = None
+def _get_holi_powder():
+    global _HOLI_POWDER
+    if _HOLI_POWDER is None:
+        r = random.Random(22)
+        _HOLI_POWDER = [(r.randint(0, RENDER_W - 1), r.randint(TREE_TOP_Y + 5, GROUND_Y - 5),
+                         r.randint(1, 4), r.choice([-1, 1]))
+                        for _ in range(600)]
+    return _HOLI_POWDER
+
+def draw_holi_powder(draw, frame):
+    for (bx, by, speed, d) in _get_holi_powder():
+        x = (bx + frame * speed * d) % RENDER_W
+        y = by - (frame // 4) % 25
+        if TREE_TOP_Y <= y < GROUND_Y:
+            draw.point((x, y), fill=_HOLI_COLORS[(bx + by) % len(_HOLI_COLORS)])
+
+def draw_lanterns(draw, streetlights, frame):
+    sway = (frame // 8) % 3 - 1
+    for sx in streetlights:
+        x  = (sx + sway) % RENDER_W
+        cy = GROUND_Y - 14
+        draw.point((x, cy),                             fill=_LANTERN_C)
+        for dx in range(-1, 2):
+            draw.point(((x + dx) % RENDER_W, cy + 1),  fill=_LANTERN_C)
+            draw.point(((x + dx) % RENDER_W, cy + 2),  fill=_LANTERN_C)
+        draw.point((x, cy + 3),                         fill=_LANTERN_C)
+        draw.point((x, cy + 4),                         fill=_LANTERN_TASSEL)
+        draw.point((x, cy + 5),                         fill=_LANTERN_TASSEL)
+
+def draw_diya_lamps(draw, near, frame):
+    flicker = (frame // 5) % 2
+    for (bx, top, w) in near:
+        for dx in range(3, w - 3, 5):
+            lx = (bx + dx + flicker) % RENDER_W
+            if 0 <= lx < RENDER_W:
+                draw.point((lx, GROUND_Y - 2), fill=(215, 155, 25))
+                draw.point((lx, GROUND_Y - 3), fill=(240, 200, 70))
+
+def draw_fox(draw, bx, color, direction, speed, frame):
+    x    = (bx + frame * speed * direction) % RENDER_W
+    gy   = GROUND_Y - 1
+    dark = tuple(max(0, c - 40) for c in color)
+    for dx in range(-1, 2):
+        draw.point(((x + dx) % RENDER_W, gy - 2), fill=color)
+        draw.point(((x + dx) % RENDER_W, gy - 3), fill=color)
+    draw.point((x,                                gy - 4), fill=color)
+    draw.point((x,                                gy - 5), fill=color)         # ear
+    draw.point(((x + direction)  % RENDER_W,       gy - 3), fill=color)        # snout
+    tx = (x - direction * 2) % RENDER_W
+    draw.point((tx,                               gy - 3), fill=color)         # tail
+    draw.point((tx,                               gy - 4), fill=color)
+    draw.point(((tx - direction) % RENDER_W,       gy - 5), fill=(230, 225, 215))  # white tip
+    if (frame // 6) % 2 == 0:
+        draw.point(((x - 1) % RENDER_W, gy - 1), fill=dark)
+        draw.point(((x + 1) % RENDER_W, gy),     fill=dark)
+    else:
+        draw.point(((x - 1) % RENDER_W, gy),     fill=dark)
+        draw.point(((x + 1) % RENDER_W, gy - 1), fill=dark)
+
+def draw_squirrel(draw, bx, color, direction, speed, frame):
+    x    = (bx + frame * speed * direction) % RENDER_W
+    gy   = GROUND_Y - 1
+    dark = tuple(max(0, c - 35) for c in color)
+    draw.point((x,                                gy - 1), fill=color)
+    draw.point((x,                                gy - 2), fill=color)
+    draw.point(((x + direction) % RENDER_W,        gy - 2), fill=dark)         # nose
+    tx = (x - direction) % RENDER_W
+    draw.point((tx,                               gy - 2), fill=color)         # tail base
+    draw.point((tx,                               gy - 3), fill=color)
+    draw.point((tx,                               gy - 4), fill=color)
+    draw.point(((tx - direction) % RENDER_W,       gy - 4), fill=color)        # tail curl
+    draw.point(((tx - direction) % RENDER_W,       gy - 3), fill=color)
+    if (frame // 4) % 2 == 0:
+        draw.point(((x - 1) % RENDER_W, gy), fill=dark)
+        draw.point(((x + 1) % RENDER_W, gy), fill=dark)
+    else:
+        draw.point((x, gy), fill=dark)
+
+def draw_butterflies(draw, butterflies, frame):
+    for (bx, by, color, phase) in butterflies:
+        t = (frame + phase) % 16
+        x = (bx + (frame + phase) // 20) % RENDER_W
+        y = by + int(math.sin((frame + phase) * 0.15) * 3)
+        if not (0 <= y < RENDER_H):
+            continue
+        if t < 8:
+            draw.point(((x - 1) % RENDER_W, y),     fill=color)
+            draw.point((x,                  y),     fill=color)
+            draw.point(((x + 1) % RENDER_W, y),     fill=color)
+            draw.point(((x - 1) % RENDER_W, y + 1), fill=color)
+            draw.point(((x + 1) % RENDER_W, y + 1), fill=color)
+        else:
+            draw.point((x, y),     fill=color)
+            draw.point((x, y + 1), fill=color)
+
+def draw_duck(draw, bx, color, direction, frame):
+    x  = (bx + frame * direction) % RENDER_W
+    gy = GROUND_Y - 1
+    draw.point((x,                                gy - 4), fill=color)
+    draw.point(((x + direction) % RENDER_W,        gy - 4), fill=(215, 185, 70))   # bill
+    for dx in range(-1, 2):
+        draw.point(((x + dx) % RENDER_W, gy - 3), fill=color)
+        draw.point(((x + dx) % RENDER_W, gy - 2), fill=color)
+    waddle = (frame // 8) % 2
+    draw.point(((x - 1) % RENDER_W, gy - 1 + waddle), fill=color)
+    draw.point(((x + 1) % RENDER_W, gy     - waddle), fill=(80, 65, 40))
+
+def draw_reindeer(draw, reindeer, frame):
+    if reindeer is None: return
+    bx, by = reindeer
+    for i in range(4):
+        x = (bx + frame * 2 + i * 14) % RENDER_W
+        y = by + (i % 2)
+        for dx in range(4):
+            draw.point(((x + dx) % RENDER_W, y),     fill=REINDEER_C)
+        draw.point(((x + 4) % RENDER_W, y - 1),      fill=REINDEER_C)
+        draw.point(((x + 4) % RENDER_W, y - 2),      fill=ANTLER_C)
+        draw.point(((x + 5) % RENDER_W, y - 3),      fill=ANTLER_C)
+        draw.point(((x + 3) % RENDER_W, y - 3),      fill=ANTLER_C)
+        draw.point(((x + 1) % RENDER_W, y + 1),      fill=REINDEER_C)
+        draw.point(((x + 3) % RENDER_W, y + 1),      fill=REINDEER_C)
+
+def draw_rainbow(draw, p, sky_pos):
+    cx = RENDER_W // 2 + int((0.5 - sky_pos) * 20)  # arc shifts opposite the sun
+    cy = GROUND_Y
+    for i, color in enumerate(_RAINBOW_COLORS):
+        for dr in range(2):
+            r = 105 - i * 2 - dr
+            r2 = r * r
+            for x in range(RENDER_W):
+                dx = x - cx
+                if dx * dx > r2:
+                    continue
+                y = int(cy - math.sqrt(r2 - dx * dx))
+                if y < 0 or y >= GROUND_Y:
+                    continue
+                t = (abs(dx) / r) ** 1.8
+                draw.point((x, y), fill=lerp_color(color, p['sky_bot'], min(1.0, t * 0.88)))
 
 def _lights_on(period, sky_pos):
     return (period in ('night', 'evening') or
@@ -792,9 +1193,10 @@ VEHICLE_COLORS = [(188,38,38),(38,78,188),(38,155,65),(188,172,38),
                   (88,88,92),(212,212,218),(38,38,38),(188,95,38)]
 BIKE_RIDER_COLORS = [(210,170,120),(240,200,160),(180,130,90),(160,100,70),(100,70,50)]
 
-def generate_vehicles(rng, period):
-    n = {'day':rng.randint(4,7),'dusk':rng.randint(2,5),'dawn':rng.randint(2,4),
+def generate_vehicles(rng, period, rain=0):
+    n = {'day':rng.randint(3,5),'dusk':rng.randint(5,8),'dawn':rng.randint(5,8),
          'evening':rng.randint(1,3),'night':rng.randint(0,2)}[period]
+    n = min(n + rain, 10)
     vehicles = []
     for _ in range(n):
         r = rng.random()
@@ -881,9 +1283,30 @@ def draw_reflections(draw, p, weather, frame):
             col = p['win_lit'] if (px + py_off) % 6 == 0 else p['sky_bot']
             draw.point((px, py), fill=lerp_color(col, p['ground'], 0.68))
 
-_XMAS_COLORS = [(220,40,40),(40,185,40),(40,100,220),(225,200,40),(220,80,185),(255,165,0)]
+_XMAS_COLORS    = [(220,40,40),(40,185,40),(40,100,220),(225,200,40),(220,80,185),(255,165,0)]
+_RAINBOW_COLORS = [(220,60,60),(220,145,50),(215,215,55),(65,175,75),(60,110,215),(140,65,210)]
+_SAND_COLORS    = [(195,158,88),(180,142,72),(210,168,98),(165,128,65)]
+_PUMPKIN_C      = (210, 100, 15)
+_PUMPKIN_STEM   = (35,  90,  20)
+_PUMPKIN_FACE   = (150, 60,  8)
+_HEART_COLORS   = [(220, 60, 90), (240, 100, 120), (190, 50, 75)]
+_HEART_SHAPE    = [(1,0),(3,0),(0,1),(1,1),(2,1),(3,1),(4,1),
+                   (0,2),(1,2),(2,2),(3,2),(4,2),(1,3),(2,3),(3,3),(2,4)]
+_SHAMROCK_C     = (35, 148, 55)
+_SHAMROCK_SHAPE = [(1,0),(3,0),(0,1),(1,1),(2,1),(3,1),(4,1),(1,2),(2,2),(3,2),(2,3),(2,4)]
+_HOLI_COLORS    = [(220,60,60),(60,180,80),(60,110,220),(220,200,50),(200,60,200),(60,200,200),(220,130,50)]
+_LANTERN_C        = (210, 35,  30)
+_LANTERN_TASSEL   = (220, 180, 40)
+FOX_COLORS        = [(195, 88, 28), (180, 72, 22), (210, 105, 35)]
+SQUIRREL_COLORS   = [(130, 98, 55), (110, 82, 45), (155, 118, 68)]
+BUTTERFLY_COLORS  = [(220,80,80),(80,180,80),(80,100,220),(220,200,50),(200,80,200),(80,200,200),(220,140,50)]
+DUCK_COLORS       = [(75, 130, 55), (125, 88, 42), (195, 190, 180)]
+REINDEER_C        = (115, 75, 40)
+ANTLER_C          = (85,  55, 28)
 _LEAF_COLORS = [(185,88,28),(165,55,32),(205,165,38),(148,65,25),(210,120,30)]
 _BLOSSOM_C   = [(245,182,193),(252,215,225),(250,235,245),(255,200,210)]
+_FOG_COLOR   = (205, 215, 228)
+_FIREFLY_C   = (195, 238, 105)
 _EGG_COLORS  = [(220,60,60),(60,180,80),(60,100,220),(220,200,60),(180,60,200),(60,200,200),(240,130,60)]
 
 _BLOSSOM_DROPS = None
@@ -921,6 +1344,14 @@ def draw_building_decorations(draw, p, season, near, streetlights, frame):
             draw.point((ex+1, ey-1), fill=c2)
             draw.point((ex,   ey-2), fill=c1)
             draw.point((ex+1, ey-2), fill=c1)
+    elif _is_halloween_week():
+        draw_pumpkins(draw, random.Random(91))
+    elif _is_chinese_new_year_week():
+        draw_lanterns(draw, streetlights, frame)
+    elif _is_diwali_week():
+        draw_diya_lamps(draw, near, frame)
+    elif _is_st_patricks():
+        draw_shamrocks(draw, random.Random(17))
     if season == 'winter':
         frost   = (218, 232, 255)
         flicker = (frame // 25) % 2
@@ -956,7 +1387,10 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
                  lightning_events, moon_age, weather, sky_pos,
                  streetlights, benches, cats, dogs, pigeons, plane,
                  shooting_stars, bats, people, n_people, birds, n_birds,
-                 vehicles, show_aurora=True):
+                 vehicles, show_aurora=True, fog=False, fireflies=None,
+                 hail=False, sandstorm=False, rainbow=False,
+                 foxes=None, squirrels=None, butterflies=None,
+                 ducks=None, reindeer=None):
     p  = dict(PALETTES[period])
     sf = 1.0
     sf += 0.12 if period == 'day' and weather['rain'] == 0 and weather['clouds'] == 0 else 0
@@ -965,6 +1399,29 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
     sf  = max(0.6, min(1.15, sf))
     p['sky_top'] = tuple(max(0, min(255, int(c * sf))) for c in p['sky_top'])
     p['sky_bot'] = tuple(max(0, min(255, int(c * sf))) for c in p['sky_bot'])
+    if sandstorm:
+        p['sky_top'] = lerp_color(p['sky_top'], (185, 148, 90), 0.5)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (195, 158, 100), 0.5)
+    if _is_halloween_week():
+        p['sky_top'] = lerp_color(p['sky_top'], (55, 18, 65), 0.28)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (155, 68, 22), 0.32)
+        p['win_lit'] = (215, 128, 32)
+    elif _is_valentines():
+        p['sky_top'] = lerp_color(p['sky_top'], (180, 60, 80), 0.15)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (220, 100, 120), 0.20)
+    elif _is_st_patricks():
+        p['sky_top'] = lerp_color(p['sky_top'], (20, 100, 40), 0.15)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (40, 140, 60), 0.18)
+    elif _is_chinese_new_year_week():
+        p['sky_top'] = lerp_color(p['sky_top'], (160, 30, 20), 0.20)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (200, 90, 30), 0.25)
+    elif _is_diwali_week():
+        p['sky_top'] = lerp_color(p['sky_top'], (180, 120, 20), 0.20)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (220, 160, 40), 0.25)
+        p['win_lit'] = (235, 195, 80)
+    elif _is_holi_week():
+        p['sky_top'] = lerp_color(p['sky_top'], (180, 80, 160), 0.12)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (200, 150, 80), 0.15)
 
     mid_bld = lerp_color(p['far_bld'], p['near_bld'], 0.5)
     img  = Image.new('RGB', (RENDER_W, RENDER_H))
@@ -975,19 +1432,29 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
     if p['moon']:  draw_moon(draw, p, moon_age, sky_pos)
     if period in ('dawn', 'day', 'dusk'): draw_sun(draw, sky_pos)
     draw_aurora(draw, p, season, weather, period, frame, show=show_aurora)
+    if rainbow and period in ('day', 'dusk', 'dawn'):
+        draw_rainbow(draw, p, sky_pos)
     draw_shooting_stars(draw, shooting_stars, p, frame)
     draw_fireworks(draw, frame)
     draw_clouds(draw, p, clouds)
     draw_plane(draw, plane, p, period, frame)
+    draw_reindeer(draw, reindeer, frame)
     draw_bats(draw, bats, frame)
-    draw_buildings(draw, far,  p['far_bld'],  p['win_lit'], p['win_dim'], p['lit_prob'] * 0.5,  random.Random(43))
-    draw_buildings(draw, mid,  mid_bld,        p['win_lit'], p['win_dim'], p['lit_prob'] * 0.75, random.Random(46))
-    draw_buildings(draw, near, p['near_bld'], p['win_lit'], p['win_dim'], p['lit_prob'],         random.Random(44))
+    lit_prob  = p['lit_prob']
+    lit_prob += weather['rain'] * 0.05
+    lit_prob += weather['clouds'] * 0.02 if period in ('evening', 'night') else 0
+    lit_prob -= 0.08 if season == 'summer' and weather['rain'] == 0 and period in ('evening', 'night') else 0
+    lit_prob  = max(0.0, min(1.0, lit_prob))
+    if _is_diwali_week(): lit_prob = 0.98
+    draw_buildings(draw, far,  p['far_bld'],  p['win_lit'], p['win_dim'], lit_prob * 0.5,  random.Random(43))
+    draw_buildings(draw, mid,  mid_bld,        p['win_lit'], p['win_dim'], lit_prob * 0.75, random.Random(46))
+    draw_buildings(draw, near, p['near_bld'], p['win_lit'], p['win_dim'], lit_prob,         random.Random(44))
     draw_building_decorations(draw, p, season, near, streetlights, frame)
     draw_ground(draw, p, random.Random(45))
     draw_reflections(draw, p, weather, frame)
     draw_vehicles(draw, vehicles, frame, period, sky_pos)
     draw_trees(draw, trees, season, weather['snow'])
+    draw_butterflies(draw, butterflies or [], frame)
     draw_light_cones(draw, img, p, streetlights, period, sky_pos)
     for sx in streetlights: draw_streetlight(draw, p, sx, period, sky_pos)
     for bx in benches:      draw_bench(draw, p, bx)
@@ -996,14 +1463,31 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
         draw_cat(draw, bx, color, is_walking, direction, speed, frame)
     for (bx, color, direction, speed) in dogs:
         draw_dog(draw, bx, color, direction, speed, frame)
+    for (bx, color, direction, speed) in (foxes or []):
+        draw_fox(draw, bx, color, direction, speed, frame)
+    for (bx, color, direction, speed) in (squirrels or []):
+        draw_squirrel(draw, bx, color, direction, speed, frame)
+    for (bx, color, direction) in (ducks or []):
+        draw_duck(draw, bx, color, direction, frame)
     lit_lamps = [sx + 4 for sx in streetlights] if _lights_on(period, sky_pos) else []
     draw_people(draw, people[:n_people], weather['rain'], frame, lit_lamps)
     draw_birds(draw, birds[:n_birds], frame)
-    if weather['snow']:
+    if weather.get('hail'):
+        draw_hail(draw, frame)
+    elif weather['snow']:
         draw_snow(draw, frame, SNOW_FLAKES[weather['rain']], weather['vx'])
     else:
         draw_rain(draw, p, frame, RAIN_DROPS[weather['rain']], weather['vx'], weather['vy'])
     draw_weather_decorations(draw, season, frame, trees)
+    if _is_valentines():
+        draw_valentines(draw, frame)
+    if _is_holi_week():
+        draw_holi_powder(draw, frame)
+    draw_fireflies(draw, fireflies or [], frame)
+    if fog:
+        draw_fog(draw, p, frame)
+    if sandstorm:
+        draw_sandstorm(draw, frame)
     if weather['lightning'] and frame in lightning_events:
         draw_lightning(draw, lightning_events[frame], frame)
     return img
@@ -1033,29 +1517,43 @@ def build_gif(period, weather, out_path, season=None, moon_age=None, sky_pos=Non
     trees          = generate_trees(random.Random(layout_seed + 1),     tree_density)
     streetlights, benches = generate_street_furniture(random.Random(layout_seed + 2))
 
+    season    = season or get_season(lat=lat)
     L  = life_seed * 1000
     people         = generate_people(random.Random(20 + L))
     birds          = generate_birds(random.Random(21 + L))
-    cats           = generate_cats(random.Random(61 + L), period)
-    dogs           = generate_dogs(random.Random(66 + L), period)
-    pigeons        = generate_pigeons(random.Random(62 + L))
+    cats           = generate_cats(random.Random(61 + L), period, season)
+    dogs           = generate_dogs(random.Random(66 + L), period, season)
+    pigeons        = generate_pigeons(random.Random(62 + L), season)
     plane          = generate_plane(random.Random(63 + L), period)
     shooting_stars = generate_shooting_stars(random.Random(64 + L), period)
-    bats           = generate_bats(random.Random(65 + L), period)
-    vehicles       = generate_vehicles(random.Random(67 + L), period)
-
-    season         = season or get_season(lat=lat)
-    moon_age       = moon_age if moon_age is not None else moon_phase_age()
-    n_people, n_birds = activity_levels(period, weather['rain'])
+    bats        = generate_bats(random.Random(65 + L), period, season)
+    foxes       = generate_foxes(random.Random(69 + L), period, season)
+    squirrels   = generate_squirrels(random.Random(70 + L), period, season)
+    butterflies = generate_butterflies(random.Random(71 + L), period, season)
+    ducks       = generate_ducks(random.Random(72 + L), period, weather['rain'])
+    reindeer    = generate_reindeer(random.Random(73 + L), period)
+    vehicles    = generate_vehicles(random.Random(67 + L), period, weather['rain'])
+    fireflies = generate_fireflies(random.Random(68 + L), period, season)
+    fog        = weather.get('fog', False)
+    hail       = weather.get('hail', False)
+    sandstorm  = weather.get('sandstorm', False)
+    show_rainbow = (period in ('day', 'dusk', 'dawn')
+                    and weather['rain'] == 0 and weather['clouds'] <= 1
+                    and random.Random(life_seed + 77).random() < 0.3)
+    moon_age  = moon_age if moon_age is not None else moon_phase_age()
+    n_people, n_birds = activity_levels(period, weather['rain'], season)
     lightning_events  = (generate_lightning_events(random.Random(55), clouds)
                          if weather['lightning'] else {})
-    show_aurora = (random.Random(layout_seed + 99).random()
+    show_aurora = (random.Random(life_seed + 99).random()
                    < _aurora_probability(lat))
     frames = [render_frame(period, f, far, mid, near, clouds, trees, season,
                            lightning_events, moon_age, weather, sky_pos,
                            streetlights, benches, cats, dogs, pigeons, plane,
                            shooting_stars, bats, people, n_people, birds, n_birds,
-                           vehicles, show_aurora=show_aurora)
+                           vehicles, show_aurora=show_aurora, fog=fog, fireflies=fireflies,
+                           hail=hail, sandstorm=sandstorm, rainbow=show_rainbow,
+                           foxes=foxes, squirrels=squirrels, butterflies=butterflies,
+                           ducks=ducks, reindeer=reindeer)
               for f in range(FRAMES)]
     frames[0].save(out_path, save_all=True, append_images=frames[1:],
                    duration=FRAME_MS, loop=0, optimize=False, disposal=2)
@@ -1151,6 +1649,8 @@ def _weather_open_meteo(lat, lon):
     return dict(
         rain=rain, clouds=0 if cover < 25 else (1 if cover < 65 else 2),
         snow=temp <= 2.0 and 51 <= code <= 77,
+        fog=45 <= code <= 48,
+        hail=code in (96, 99), sandstorm=False,
         vx=vx, vy=vy, lightning=code >= 95,
         sunrise_min=sunrise_min, sunset_min=sunset_min,
     )
@@ -1194,14 +1694,18 @@ def _weather_openweathermap(lat, lon, api_key):
     vx, vy = _wind_vector(wind)
     return dict(
         rain=rain, clouds=0 if cover < 25 else (1 if cover < 65 else 2),
-        snow=snow, vx=vx, vy=vy, lightning=lightning,
+        snow=snow,
+        fog=code // 100 == 7 and code not in (731, 751, 761),
+        hail=code == 906,
+        sandstorm=code in (731, 751, 761),
+        vx=vx, vy=vy, lightning=lightning,
         sunrise_min=sunrise_min, sunset_min=sunset_min,
     )
 
 def fetch_weather(lat=None, lon=None, geo_provider='ipapi',
                   weather_provider='open-meteo', weather_api_key=''):
-    DEFAULTS = dict(rain=2, clouds=1, snow=False, vx=1, vy=4,
-                    lightning=False, sunrise_min=360, sunset_min=1080)
+    DEFAULTS = dict(rain=2, clouds=1, snow=False, fog=False, hail=False, sandstorm=False,
+                    vx=1, vy=4, lightning=False, sunrise_min=360, sunset_min=1080)
     try:
         if lat is None or lon is None:
             lat, lon = _geolocate(geo_provider)
@@ -1397,7 +1901,9 @@ if __name__ == '__main__':
     def weather_from_args():
         return dict(rain=int(arg('--rain', '2')), clouds=int(arg('--clouds', '1')),
                     snow=bool_arg('--snow'), vx=int(arg('--vx', '1')),
-                    vy=int(arg('--vy', '4')), lightning=bool_arg('--lightning'))
+                    vy=int(arg('--vy', '4')), lightning=bool_arg('--lightning'),
+                    fog=bool_arg('--fog'), hail=bool_arg('--hail'),
+                    sandstorm=bool_arg('--sandstorm'))
 
     if '--init' in args:
         run_init()
@@ -1422,7 +1928,8 @@ if __name__ == '__main__':
         wake   = _next_wake(w['sunrise_min'], w['sunset_min'])
         print(f"period={period} rain={w['rain']} clouds={w['clouds']} "
               f"snow={int(w['snow'])} vx={w['vx']} vy={w['vy']} "
-              f"lightning={int(w['lightning'])} wake={wake}")
+              f"lightning={int(w['lightning'])} fog={int(w['fog'])} "
+              f"hail={int(w['hail'])} sandstorm={int(w['sandstorm'])} wake={wake}")
 
     elif '--preview' in args:
         idx    = args.index('--preview')
@@ -1432,11 +1939,14 @@ if __name__ == '__main__':
         else:
             print('Fetching weather...')
             raw     = fetch_weather(lat=loc_lat, lon=loc_lon, geo_provider=geo_provider, weather_provider=weather_provider, weather_api_key=weather_api_key)
-            weather = {k: raw[k] for k in ('rain','clouds','snow','vx','vy','lightning')}
+            weather = {k: raw[k] for k in ('rain','clouds','snow','vx','vy','lightning','fog','hail','sandstorm')}
             for k, flag in [('rain','--rain'),('clouds','--clouds'),('vx','--vx'),('vy','--vy')]:
                 if arg(flag): weather[k] = int(arg(flag))
             if '--snow'      in args: weather['snow']      = bool_arg('--snow')
             if '--lightning' in args: weather['lightning'] = bool_arg('--lightning')
+            if '--fog'       in args: weather['fog']       = bool_arg('--fog')
+            if '--hail'      in args: weather['hail']      = bool_arg('--hail')
+            if '--sandstorm' in args: weather['sandstorm'] = bool_arg('--sandstorm')
         print(f"  period={period}  rain={weather['rain']}  clouds={weather['clouds']}  "
               f"snow={weather['snow']}  lightning={weather['lightning']}")
         path = (f"/tmp/dynamic_city_preview_{period}"
@@ -1471,7 +1981,7 @@ if __name__ == '__main__':
         out_dir = os.path.dirname(os.path.abspath(__file__))
         print('Fetching weather...')
         raw = fetch_weather(lat=loc_lat, lon=loc_lon, geo_provider=geo_provider, weather_provider=weather_provider, weather_api_key=weather_api_key)
-        w   = {k: raw[k] for k in ('rain','clouds','snow','vx','vy','lightning')}
+        w   = {k: raw[k] for k in ('rain','clouds','snow','vx','vy','lightning','fog','hail','sandstorm')}
         print(f"  rain={w['rain']}  clouds={w['clouds']}  snow={w['snow']}  lightning={w['lightning']}")
         print('Generating wallpapers...')
         for period in PALETTES:
