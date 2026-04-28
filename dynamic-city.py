@@ -290,7 +290,7 @@ def draw_moon(draw, p, age, sky_pos=0.5):
     r   = 7
     sky        = lerp_color(p['sky_top'], p['sky_bot'], max(0, cy) / GROUND_Y)
     lit_color  = (238, 232, 195)
-    dark_color = tuple(max(0, c - 12) for c in sky)
+    dark_color = lerp_color(sky, (42, 48, 68), 0.55)
     waxing     = frac < 0.5
     lit_t      = frac * 2 if waxing else (1 - frac) * 2
     terminator = 1 - lit_t * 2
@@ -1399,6 +1399,9 @@ def render_frame(period, frame, far, mid, near, clouds, trees, season,
     sf  = max(0.6, min(1.15, sf))
     p['sky_top'] = tuple(max(0, min(255, int(c * sf))) for c in p['sky_top'])
     p['sky_bot'] = tuple(max(0, min(255, int(c * sf))) for c in p['sky_bot'])
+    if season in ('spring', 'summer') and period == 'day':
+        p['sky_top'] = lerp_color(p['sky_top'], (30, 85, 175), 0.55)
+        p['sky_bot'] = lerp_color(p['sky_bot'], (85, 145, 215), 0.45)
     if sandstorm:
         p['sky_top'] = lerp_color(p['sky_top'], (185, 148, 90), 0.5)
         p['sky_bot'] = lerp_color(p['sky_bot'], (195, 158, 100), 0.5)
