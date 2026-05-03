@@ -25,7 +25,7 @@ except Exception:
 EOF
 }
 
-LIFE_SEED=$(( RANDOM % 10000 ))
+LIFE_SEED=$(( $(date +%Y%m%d) % 10000 ))
 
 SETTER="$(_cfg wallpaper.setter awww)"
 TRANSITION="$(_cfg wallpaper.transition wipe)"

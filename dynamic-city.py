@@ -1768,12 +1768,13 @@ def _prompt_choice(prompt, options, default):
 
 def run_init():
     cfg_path = Path.home() / '.config' / 'dynamic-city' / 'config.toml'
+    existing = load_config() if cfg_path.exists() else DEFAULT_CONFIG
     print("\n=== dynamic-city setup ===\n")
     print("Press Enter to keep the default value shown in brackets.\n")
 
     # ── City layout ───────────────────────────────────────────────────────────
-    tree_d = _prompt_int("Tree density   (1=sparse, 10=dense forest)", 1, 10, 6)
-    bld_d  = _prompt_int("Building density (1=scattered, 10=packed skyline)", 1, 10, 6)
+    tree_d = _prompt_int("Tree density   (1=sparse, 10=dense forest)", 1, 10, existing['city']['tree_density'])
+    bld_d  = _prompt_int("Building density (1=scattered, 10=packed skyline)", 1, 10, existing['city']['building_density'])
     print()
 
     # ── Wallpaper setter ──────────────────────────────────────────────────────
@@ -1814,10 +1815,17 @@ def run_init():
     print()
     QUICK_WEATHER = dict(rain=1, clouds=1, snow=False, vx=1, vy=4,
                          lightning=False, sunrise_min=360, sunset_min=1080)
+    current_layout_seed = existing['city']['layout_seed']
     chosen_seed = None
+    first = True
     while True:
-        seed = random.randint(1, 99999)
-        print(f"Layout seed: {seed} — rendering preview (this takes ~10s)...")
+        if first and current_layout_seed != DEFAULT_CONFIG['city']['layout_seed']:
+            seed = current_layout_seed
+            print(f"Layout seed: {seed} (current) — rendering preview (this takes ~10s)...")
+        else:
+            seed = random.randint(1, 99999)
+            print(f"Layout seed: {seed} — rendering preview (this takes ~10s)...")
+        first = False
         out  = f'/tmp/dynamic_city_init_{seed}.gif'
         build_gif('night', QUICK_WEATHER, out,
                   layout_seed=seed, tree_density=tree_d, building_density=bld_d)

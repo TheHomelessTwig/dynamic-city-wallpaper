@@ -130,8 +130,10 @@ bash install.sh
 
 ## Configuration
 
-`--init` writes `~/.config/dynamic-city/config.toml`. You can also copy and
-edit `config.toml.example` manually.
+`--init` writes `~/.config/dynamic-city/config.toml`. Re-running it to change
+a setting (e.g. weather provider) will pre-fill your existing values, so your
+layout seed and densities are preserved unless you explicitly pick new ones.
+You can also copy and edit `config.toml.example` manually.
 
 ```toml
 [display]
@@ -199,8 +201,8 @@ The generator renders a 320×180 pixel-art scene into 320 frames at 80 ms/frame,
 then upscales to your monitor resolution. City structure (buildings, trees,
 street furniture) is deterministic — seeded by `layout_seed` so the same config
 always produces the same skyline. Street life (creatures, aurora, rainbow) is
-re-randomised each time the daemon starts, so the scene looks different across
-reboots.
+re-randomised once per calendar day, so the scene refreshes overnight but stays
+consistent across reboots within the same day.
 
 **Device load:** the GIF render takes ~10 seconds on one CPU core when conditions
 change, then the process exits. Playback is handled entirely by the wallpaper
